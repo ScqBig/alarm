@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/ic_alarm">
+
+    <!-- 外圈过渡颜色 -->
+    <target
+        android:name="outerCircle"
+        android:animation="@animator/outer_circle_color"/>
+
+    <!-- 左铃铛 -->
+    <target
+        android:name="leftBell"
+        android:animation="@animator/bell_color"/>
+
+    <!-- 右铃铛 -->
+    <target
+        android:name="rightBell"
+        android:animation="@animator/bell_color"/>
+
+    <!-- 左脚装饰 -->
+    <target
+        android:name="leftFoot"
+        android:animation="@animator/foot_color"/>
+
+    <!-- 右脚装饰 -->
+    <target
+        android:name="rightFoot"
+        android:animation="@animator/foot_color"/>
+</animated-vector>
