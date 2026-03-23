@@ -1,0 +1,124 @@
+package com.example.alarm_jinxuan.view.ring
+
+import android.app.KeyguardManager
+import android.graphics.Color
+import android.os.Build
+import android.os.Bundle
+import android.view.View
+import android.view.WindowInsets
+import android.view.WindowInsetsController
+import android.view.WindowManager
+import android.widget.SeekBar
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import com.example.alarm_jinxuan.databinding.ActivityRingBinding
+import com.example.alarm_jinxuan.model.AlarmEntity
+import com.example.alarm_jinxuan.utils.MediaUtils
+import com.example.alarm_jinxuan.utils.VibrationUtils
+
+class RingActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityRingBinding
+    private lateinit var alarm: AlarmEntity
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        binding = ActivityRingBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        setupFlagsForLockScreen()
+
+        // 初始化数据
+        alarm = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Android 13 及以上使用新方法
+            intent.getParcelableExtra("ALARM_OBJ", AlarmEntity::class.java)
+        } else {
+            // Android 13 以下使用旧方法
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra<AlarmEntity>("ALARM_OBJ")
+        })!!
+        // 显示最上面的时间
+        fillAlarmData()
+
+        // 设置交互
+        setupListeners()
+    }
+
+    /**
+     * 冲破锁屏
+     */
+    private fun setupFlagsForLockScreen() {
+        // 1. 点亮屏幕并冲破锁屏
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        } else {
+            @Suppress("DEPRECATION")
+            window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
+        }
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+        // 2. 💡 解决黑条的关键：适配刘海屏
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            window.attributes.layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
+
+        // 3. 实现沉浸式占满
+        window.setDecorFitsSystemWindows(false)
+        window.statusBarColor = Color.TRANSPARENT
+        window.navigationBarColor = Color.TRANSPARENT
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.insetsController?.let {
+                it.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+                it.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_FULLSCREEN
+                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN // 💡 增加这一行，确保布局撑开
+                    or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY)
+        }
+    }
+
+    private fun fillAlarmData() {
+        binding.tvTime.text = "${alarm.hour}:${alarm.minute}"
+    }
+
+    private fun setupListeners() {
+        // 图中那个椭圆按钮：“10 分钟后提醒”
+        binding.btnSnooze.setOnClickListener {
+            // 实现小睡逻辑：先关掉当前的，定一个10分钟后的 AlarmManager 任务
+            Toast.makeText(this, "闹钟将在 10 分钟后再次响铃", Toast.LENGTH_SHORT).show()
+            MediaUtils.stop(this)
+        }
+
+        // 💡 关键：滑动关闭交互
+        binding.seekbarDismiss.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {}
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                // 如果用户松手时，滑块滑到了 80% 以上，就认为是要关闭
+                if (seekBar != null && seekBar.progress > 80) {
+                    MediaUtils.stop(this@RingActivity)
+                } else {
+                    // 否则，滑块自动弹回起点
+                    seekBar?.progress = 0
+                }
+            }
+        })
+    }
+
+    // 严谨点，防止Activity意外销毁导致声音一直响
+    override fun onDestroy() {
+        super.onDestroy()
+        MediaUtils.stop(this)
+        VibrationUtils.stop(this)
+    }
+}

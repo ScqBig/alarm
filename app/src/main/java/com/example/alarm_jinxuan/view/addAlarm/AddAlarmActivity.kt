@@ -1,10 +1,10 @@
 package com.example.alarm_jinxuan.view.addAlarm
 
 import android.app.Dialog
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.Gravity
+import android.view.View
 import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
@@ -16,12 +16,15 @@ import com.example.alarm_jinxuan.databinding.ActivityAddAlarmBinding
 import com.example.alarm_jinxuan.databinding.LayoutAlarmDurationBinding
 import com.example.alarm_jinxuan.databinding.LayoutAlarmNameDialogBinding
 import com.example.alarm_jinxuan.databinding.LayoutConfirmDialogBinding
+import com.example.alarm_jinxuan.databinding.LayoutDeleteDialogBinding
 import com.example.alarm_jinxuan.databinding.LayoutIntervalDialogBinding
 import com.example.alarm_jinxuan.databinding.LayoutRepeatDialogBinding
 import com.example.alarm_jinxuan.model.AddAlarmClockManager
 import com.example.alarm_jinxuan.model.AlarmEntity
 import com.example.alarm_jinxuan.model.DurationOption
 import com.example.alarm_jinxuan.model.RepeatDay
+import com.example.alarm_jinxuan.utils.AlarmManagerUtils
+import com.example.alarm_jinxuan.utils.StringUtils
 import com.example.alarm_jinxuan.view.alarmClockRing.AlarmClockRingActivity
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -37,12 +40,17 @@ class AddAlarmActivity : AppCompatActivity() {
 
     private val minutesList = listOf(1, 5, 10, 15, 20, 30)
 
+    private var alarmEntity: AlarmEntity ?= null
+
+    // 当前的响铃时长
+    private var currentRingMinute = 5
+
     private val durationData = minutesList.mapIndexed { index, min ->
         DurationOption(
             id = index,
             minute = min,
             label = "$min 分钟",
-            isSelected = (min == 5)
+            isSelected = (min == currentRingMinute)
         )
     }
 
@@ -61,9 +69,6 @@ class AddAlarmActivity : AppCompatActivity() {
     // 2. 分钟数据 (0..59) 的 Int 集合
     val minuteDataInt = (0..59).toList()
 
-    // 当前的响铃时长
-    private var currentRingMinute = 5
-
     // 当前的响铃间隔时间（分钟）
     private var intervalRingValue = 10
 
@@ -80,6 +85,9 @@ class AddAlarmActivity : AppCompatActivity() {
         binding = ActivityAddAlarmBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // 判断是编辑模式还是新建模式
+        val alarmId = intent.getIntExtra("ALARM_ID",-1)
+
         binding.wheelPeriod.apply {
             data = periodData
         }
@@ -90,8 +98,26 @@ class AddAlarmActivity : AppCompatActivity() {
             data = minuteData
         }
 
-        // 更新当前选择时间
-        selectWheel()
+        if (alarmId != -1) {
+            binding.btnDeleteAlarm.visibility = View.VISIBLE
+
+            lifecycleScope.launch {
+                val alarmData = viewModel.selectAlarmData(alarmId)
+                if (alarmData != null) {
+                    updateUI(alarmData)
+                    alarmEntity = alarmData
+                } else {
+                    // 没查到，弹个提示并关掉页面
+                    Toast.makeText(this@AddAlarmActivity, "该闹钟不存在", Toast.LENGTH_SHORT).show()
+                    finish()
+                }
+            }
+        } else {
+            binding.btnDeleteAlarm.visibility = View.GONE
+
+            // 更新当前默认时间
+            selectWheel()
+        }
 
         // 修改星期几
         binding.itemRepeat.setOnClickListener { repeatDialog() }
@@ -129,6 +155,41 @@ class AddAlarmActivity : AppCompatActivity() {
         binding.success.setOnClickListener {
             save()
         }
+
+        // 删除制定闹钟数据
+        binding.btnDeleteAlarm.setOnClickListener {
+            popDeleteDialog(alarmId)
+        }
+    }
+
+    private fun updateUI(alarm: AlarmEntity) {
+        // 先设置时间
+        if (alarm.hour24 < 12) {
+            binding.wheelPeriod.selectedItemPosition = 0
+        } else {
+            binding.wheelPeriod.selectedItemPosition = 1
+        }
+        binding.wheelHour.selectedItemPosition = alarm.hour - 1
+
+        binding.wheelMinute.selectedItemPosition = alarm.minute
+
+        // 初始化内存数据
+        AddAlarmClockManager.init(alarm)
+
+        // 闹钟重复日期
+        binding.tvRepeatValue.text = alarm.repeatText
+        val str = alarm.repeatData.split(",")
+        dataList.forEachIndexed { index, day ->
+            day.isChecked = str[index] == "1"
+        }
+        // 闹钟名
+        binding.alarmName.text = alarm.label
+        // 响铃时长
+        currentRingMinute = alarm.ringDuration
+        binding.textDuration.text = "$currentRingMinute 分钟"
+        // 再响间隔
+        intervalRingValue = alarm.snoozeInterval
+        repeatRingValue = alarm.snoozeCount
     }
 
     private fun selectWheel() {
@@ -239,7 +300,7 @@ class AddAlarmActivity : AppCompatActivity() {
             // 3. 弹出软键盘
             // 这是一个经典坑：有时候 View 还没贴到窗口上，键盘弹不出来，所以稍微推迟一点点
             postDelayed({
-                val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
                 imm.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
             }, 200) // 延迟 200 毫秒最稳
         }
@@ -380,16 +441,52 @@ class AddAlarmActivity : AppCompatActivity() {
         dialog.show()
     }
 
+    // 确认是否删除按钮
+    private fun popDeleteDialog(alarmId: Int) {
+        val dialog = Dialog(this)
+
+        val dialogBinding = LayoutDeleteDialogBinding.inflate(layoutInflater)
+        dialog.setContentView(dialogBinding.root)
+
+        dialog.window?.apply {
+            setBackgroundDrawableResource(android.R.color.transparent)
+
+            attributes?.apply {
+                gravity = Gravity.BOTTOM // 贴在底部（如果你想居中就用 Gravity.CENTER）
+                width = WindowManager.LayoutParams.MATCH_PARENT // 宽度撑满
+                height = WindowManager.LayoutParams.WRAP_CONTENT // 高度自适应
+            }
+        }
+        dialog.setCanceledOnTouchOutside(false)
+
+        // 取消删除
+        dialogBinding.btnCancel.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        // 确认删除
+        dialogBinding.btnConfirm.setOnClickListener {
+            AddAlarmClockManager.clear()
+
+            dialog.dismiss()
+            // 同时需要同步到数据库
+            delete(alarmId)
+
+        }
+
+        dialog.show()
+    }
+
     /**
      * 保存到数据库
      */
     private fun save() {
         // 先整理时间
-        val periodPosition = binding.wheelPeriod.selectedItemPosition
+        val periodPosition = binding.wheelPeriod.currentItemPosition
         val period = periodData[periodPosition]
-        val hourPosition = binding.wheelHour.selectedItemPosition
+        val hourPosition = binding.wheelHour.currentItemPosition
         val hour = hourDataInt[hourPosition]
-        val minutePosition = binding.wheelMinute.selectedItemPosition
+        val minutePosition = binding.wheelMinute.currentItemPosition
         val minute = minuteDataInt[minutePosition]
 
         // 整理时间称呼的同时完成24小时转换
@@ -421,6 +518,7 @@ class AddAlarmActivity : AppCompatActivity() {
         }
         // 整理对象
         val newAlarm = AlarmEntity(
+            id = alarmEntity?.id ?: 0,
             period = displayPeriod,
             hour = hour,
             minute = minute,
@@ -432,6 +530,8 @@ class AddAlarmActivity : AppCompatActivity() {
 
             ringtoneName = AddAlarmClockManager.tempRingtoneName,
             ringtoneFileName = AddAlarmClockManager.tempRingtoneFileName,
+            ringtoneId = AddAlarmClockManager.tempRingtoneId,
+
             vibrationName = AddAlarmClockManager.tempVibrationName,
             vibrationId = AddAlarmClockManager.tempVibrationId,
 
@@ -447,9 +547,13 @@ class AddAlarmActivity : AppCompatActivity() {
 
             if (rowId != -1L) {
                 val triggerTime = viewModel.calculateNextTriggerTime(newAlarm)
-                val (h, m) = viewModel.getRemainingTime(triggerTime)
+                val (d, h, m) = viewModel.getRemainingTime(triggerTime)
 
-                Toast.makeText(applicationContext, "$h 小时 $m 分钟后响铃", Toast.LENGTH_SHORT).show()
+                // 同时把闹钟交给系统管理器
+                AlarmManagerUtils.setAlarm(this@AddAlarmActivity,newAlarm,triggerTime)
+
+                val time = StringUtils.formatRemainingTime(d, h, m)
+                Toast.makeText(applicationContext, time, Toast.LENGTH_SHORT).show()
 
                 // 返回页面
                 finish()
@@ -458,6 +562,25 @@ class AddAlarmActivity : AppCompatActivity() {
             }
 
         }
+    }
+
+    /**
+     * 删除闹钟
+     */
+    private fun delete(id: Int) {
+        lifecycleScope.launch {
+            val rowId = viewModel.delete(id)
+            if (rowId == 1) {
+                Toast.makeText(applicationContext, "删除成功", Toast.LENGTH_SHORT).show()
+                // 同时也要取消闹钟
+                AlarmManagerUtils.cancelAlarm(this@AddAlarmActivity,id)
+
+                finish()
+            } else {
+                Toast.makeText(applicationContext, "删除失败", Toast.LENGTH_SHORT).show()
+            }
+        }
+
     }
 
     override fun onResume() {

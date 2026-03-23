@@ -1,5 +1,6 @@
 package com.example.alarm_jinxuan.view.alarm
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -19,6 +20,8 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.example.alarm_jinxuan.databinding.FragmentAlarmBinding
 import com.example.alarm_jinxuan.model.AlarmEntity
 import com.example.alarm_jinxuan.utils.SharedClockComponents
+import com.example.alarm_jinxuan.utils.StringUtils
+import com.example.alarm_jinxuan.view.addAlarm.AddAlarmActivity
 import com.example.alarm_jinxuan.view.addAlarm.AddAlarmViewModel
 import kotlinx.coroutines.launch
 
@@ -103,16 +106,20 @@ class AlarmFragment : Fragment() {
             // 设置适配器
             alarmAdapter = AlarmAdapter(
                 onClick = { alarm ->
-                    // Todo
+                    val intent = Intent(requireContext(), AddAlarmActivity::class.java).apply {
+                        putExtra("ALARM_ID",alarm.id)
+                    }
+                    startActivity(intent)
                 },
                 onToggle = { alarm, isEnabled ->
                     viewModel.updateAlarmEnabled(alarm.id, isEnabled)
 
                     if (isEnabled) {
                         val triggerTime = viewModel.calculateNextTriggerTime(alarm)
-                        val (h, m) = viewModel.getRemainingTime(triggerTime)
+                        val (d, h, m) = viewModel.getRemainingTime(triggerTime)
                         // 弹窗提示用户
-                        showSmartToast("$h 小时 $m 分钟后响铃")
+                        val time = StringUtils.formatRemainingTime(d,h,m)
+                        showSmartToast(time)
                     }
                 }
             )

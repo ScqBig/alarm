@@ -13,5 +13,6 @@
     <color name="light_gray">#888888</color>
     <color name="text_primary">#555555</color>
     <color name="halo">#22000000</color>
+    <color name="red">#F44336</color>
     <color name="shallow_light_gray">#E0E0E0</color>
 </resources>

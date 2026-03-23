@@ -389,4 +389,28 @@
 
     </LinearLayout>
 
+    <Button
+        android:id="@+id/btn_delete_alarm"
+        android:layout_width="160dp"
+        android:layout_height="40dp"
+
+        android:text="@string/del_alarm"
+        android:textColor="@color/red"
+        android:textSize="16sp"
+
+        android:background="@drawable/bg_delete_button"
+
+        app:backgroundTint="@null"
+        android:layout_marginBottom="20dp"
+
+        android:stateListAnimator="@null"
+        app:elevation="0dp"
+
+        android:visibility="gone"
+
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

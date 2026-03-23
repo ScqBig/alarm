@@ -62,8 +62,12 @@ object AddAlarmClockManager {
             ?: longArrayOf(0, 0) // 如果没找到，默认不震动
 
     // 初始化（编辑页面时调用）
-    fun init(id: Int) {
-        tempVibrationId = id
+    fun init(alarm: AlarmEntity) {
+        tempVibrationId = alarm.vibrationId
+        tempVibrationName = alarm.vibrationName
+        tempRingtoneName = alarm.ringtoneName
+        tempRingtoneId = alarm.ringtoneId
+        tempRingtoneFileName = alarm.ringtoneFileName
     }
 
     // 重置（退出编辑/新建页面时调用）

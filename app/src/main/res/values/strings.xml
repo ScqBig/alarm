@@ -9,6 +9,8 @@
     <string name="search_city">搜索城市</string>
     <string name="alarm_rings">14 小时 14 分钟后响铃</string>
     <string name="add_alarm">新建闹钟</string>
+    <string name="del_alarm">删除闹钟</string>
+    <string name="delete">删除</string>
     <string name="repeat">重复</string>
     <string name="no_repeat">不重复</string>
     <string name="legal_working_day">法定工作日 (智能跳过节假日)</string>
@@ -26,7 +28,9 @@
     <string name="recommend_ring">推荐铃声</string>
     <string name="classic_ring">经典铃声</string>
     <string name="confirm_update">是否保存更改？</string>
+    <string name="confirm_delete">是否删除此闹钟？</string>
     <string name="give_up">放弃</string>
+    <string name="cancel">取消</string>
     <string name="save">保存</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>

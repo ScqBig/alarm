@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.alarm_jinxuan.dao.AppDatabase
 import com.example.alarm_jinxuan.model.AlarmEntity
+import com.example.alarm_jinxuan.utils.StringUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
@@ -50,9 +51,9 @@ class AddAlarmViewModel(application: Application) : AndroidViewModel(application
         val nextAlarmEntity = alarms.firstOrNull() ?: return@combine "所有闹钟已关闭"
 
         val triggerTime = calculateNextTriggerTime(nextAlarmEntity)
-        val (h, m) = getRemainingTime(triggerTime)
+        val (d,h, m) = getRemainingTime(triggerTime)
 
-        "$h 小时 $m 分钟后响铃"
+        StringUtils.formatRemainingTime(d,h,m)
     }
 
     /**
@@ -79,18 +80,28 @@ class AddAlarmViewModel(application: Application) : AndroidViewModel(application
     /**
      * 和当前时间（now）计算还有多久
      */
-    fun getRemainingTime(triggerTime: Long): Pair<Int, Int> {
+    fun getRemainingTime(triggerTime: Long): Triple<Int, Int, Int> {
         val diff = triggerTime - System.currentTimeMillis()
 
-        val minutes = diff / (1000 * 60)
-        val hours = minutes / 60
-        val remainMinutes = minutes % 60
+        // 如果时间已经过了，直接返回全 0
+        if (diff <= 0) return Triple(0, 0, 0)
 
-        return Pair(hours.toInt(), remainMinutes.toInt())
+        // 先算出总分钟数
+        val totalMinutes = diff / (1000 * 60)
+
+        // 算出总小时数
+        val totalHours = totalMinutes / 60
+
+        // 级联取余计算
+        val remainMinutes = (totalMinutes % 60).toInt()
+        val remainHours = (totalHours % 24).toInt() // 小时对 24 取余，保证不超过 24
+        val days = (totalHours / 24).toInt()        // 总小时除以 24 得到天数
+
+        return Triple(days, remainHours, remainMinutes)
     }
 
     /**
-     * 插入闹钟到数据库
+     * 插入（修改）闹钟到数据库
      */
     suspend fun insertAlarm(alarm: AlarmEntity): Long {
         return withContext(Dispatchers.IO) {
@@ -104,6 +115,24 @@ class AddAlarmViewModel(application: Application) : AndroidViewModel(application
     fun updateAlarmEnabled(alarmId: Int,enabled: Boolean) {
         viewModelScope.launch {
             alarmDao.updateEnabledStatus(alarmId,enabled)
+        }
+    }
+
+    /**
+     * 查询对应闹钟数据
+     */
+    suspend fun selectAlarmData(alarmId: Int): AlarmEntity? {
+        return withContext(Dispatchers.IO){
+            alarmDao.getAlarmById(alarmId)
+        }
+    }
+
+    /**
+     * 删除对应闹钟数据
+     */
+    suspend fun delete(alarmId: Int): Int {
+        return withContext(Dispatchers.IO) {
+            alarmDao.deleteAlarmById(alarmId)
         }
     }
 }

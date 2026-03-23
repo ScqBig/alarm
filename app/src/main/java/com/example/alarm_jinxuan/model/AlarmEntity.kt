@@ -1,8 +1,11 @@
 package com.example.alarm_jinxuan.model
 
+import android.os.Parcelable
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.parcelize.Parcelize
 
+@Parcelize
 @Entity(tableName = "alarms")
 data class AlarmEntity(
     @PrimaryKey(autoGenerate = true)
@@ -16,10 +19,12 @@ data class AlarmEntity(
     val isEnabled: Boolean = true, // 闹钟开启/关闭状态
 
     val repeatText: String,      // "每天" / "只响一次" / "周一, 周五"
-    val repeatData: String,      //  原始数据（如 "1,0,1,0,0,0,0"
+    val repeatData: String,      //  原始数据（如 "1,0,1,0,0,0,0")
 
     val ringtoneName: String,    // 铃声名
-    val ringtoneFileName: String,// 铃声文件名（不存储资源Id）
+    val ringtoneFileName: String,// 铃声文件名（不存储资源ID）
+    val ringtoneId: Int,         // 铃声文件ID
+
     val vibrationName: String,   // 震动模式名
     val vibrationId: Int,        // 震动 ID
 
@@ -30,4 +35,4 @@ data class AlarmEntity(
 
     val label: String = "闹钟",   // 备注（闹钟名）
     val createTime: Long = System.currentTimeMillis() // 排序用
-)
+) : Parcelable

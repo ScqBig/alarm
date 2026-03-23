@@ -1,7 +1,6 @@
 package com.example.alarm_jinxuan.view.alarmClockRing
 
 import android.content.Intent
-import android.media.MediaPlayer
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -9,16 +8,15 @@ import com.example.alarm_jinxuan.R
 import com.example.alarm_jinxuan.databinding.ActivityAlarmClockRingBinding
 import com.example.alarm_jinxuan.model.AddAlarmClockManager
 import com.example.alarm_jinxuan.model.RingtoneOption
+import com.example.alarm_jinxuan.utils.MediaUtils
 import com.example.alarm_jinxuan.utils.VibrationUtils
 import com.example.alarm_jinxuan.view.vibration.VibrationActivity
 
 class AlarmClockRingActivity : AppCompatActivity() {
     private lateinit var binding: ActivityAlarmClockRingBinding
 
-    // 播放器
-    private var mediaPlayer: MediaPlayer? = null
-
     private lateinit var ringtoneOptionAdapter: RingtoneAdapter
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -34,7 +32,7 @@ class AlarmClockRingActivity : AppCompatActivity() {
             // 播放音乐前也需要振动
             VibrationUtils.vibrate(this, AddAlarmClockManager.currentVibrationPattern)
             // 播放音乐
-            startRingtonePreview(onItemSelected.resId)
+            MediaUtils.startRingtonePreview(onItemSelected.resId,this)
 
             binding.rbSelect.isChecked = false
 
@@ -55,7 +53,7 @@ class AlarmClockRingActivity : AppCompatActivity() {
 
             // 这里同理振动
             VibrationUtils.vibrate(this, AddAlarmClockManager.currentVibrationPattern)
-            startRingtonePreview(R.raw.alarm_morning_light)
+            MediaUtils.startRingtonePreview(R.raw.alarm_morning_light,this)
 
             AddAlarmClockManager.tempRingtoneId = -1 // 给推荐铃声定一个特殊 ID
             AddAlarmClockManager.tempRingtoneName = "Morning Light"
@@ -75,28 +73,7 @@ class AlarmClockRingActivity : AppCompatActivity() {
 
     }
 
-    /**
-     * 核心播放方法：传入 raw 资源 ID 即可响起来
-     */
-    private fun startRingtonePreview(resId: Int) {
-        try {
-            // 彻底清理上一个播放器（这是防卡顿、防重叠的关键）
-            mediaPlayer?.let {
-                if (it.isPlaying) it.stop()
-                it.release()
-            }
-            mediaPlayer = null
 
-            mediaPlayer = MediaPlayer.create(this, resId).apply {
-                // 开启循环
-                isLooping = true
-
-                start()
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
 
     private fun generateRingtoneList(): List<RingtoneOption> {
         val list = mutableListOf<RingtoneOption>()
@@ -141,15 +118,7 @@ class AlarmClockRingActivity : AppCompatActivity() {
     override fun onStop() {
         super.onStop()
         // 不让震动
-        VibrationUtils.stop(this)
-        // 停止音乐播放
-        mediaPlayer?.let {
-            if (it.isPlaying) {
-                it.stop()
-            }
-            it.release()
-        }
-        mediaPlayer = null
+        MediaUtils.stop(this)
     }
 
 }

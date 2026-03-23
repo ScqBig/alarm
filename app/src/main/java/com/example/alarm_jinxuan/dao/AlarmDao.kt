@@ -16,8 +16,8 @@ interface AlarmDao {
     suspend fun updateEnabledStatus(alarmId: Int, enabled: Boolean)
 
     // 删除闹钟
-    @Delete
-    suspend fun deleteAlarm(alarm: AlarmEntity)
+    @Query("DELETE FROM alarms WHERE id = :alarmId")
+    suspend fun deleteAlarmById(alarmId: Int): Int
 
     // 查询所有闹钟（按时间先后排序）
     @Query("SELECT * FROM alarms ORDER BY hour24 ASC, minute ASC")
