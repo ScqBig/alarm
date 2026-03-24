@@ -1,6 +1,14 @@
 package com.example.alarm_jinxuan.utils
 
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+
 object StringUtils {
+    /**
+     * 获取最近的响铃时间
+     */
     fun formatRemainingTime(days: Int, hours: Int, minutes: Int): String {
         val sb = StringBuilder("")
 
@@ -22,4 +30,20 @@ object StringUtils {
 
         return sb.toString()
     }
+
+    /**
+     * 获取最近的响铃具体时间
+     */
+    fun formattedTime(nextTriggerTime: Long): String{
+        val instant = Instant.ofEpochMilli(nextTriggerTime)
+        val localDateTime = instant.atZone(ZoneId.systemDefault()).toLocalDateTime()
+
+        // 2. 创建格式化器
+        // "h:mm"：12小时制，分钟补零
+        val formatter = DateTimeFormatter.ofPattern("h:mm", Locale.getDefault())
+        val formattedTime = localDateTime.format(formatter)
+
+        return formattedTime
+    }
+
 }

@@ -10,6 +10,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.example.alarm_jinxuan.databinding.ActivityMainBinding
+import com.example.alarm_jinxuan.repository.AlarmRepository
 import com.example.alarm_jinxuan.view.alarm.AlarmFragment
 import com.example.alarm_jinxuan.view.stopWatch.StopWatchFragment
 import com.example.alarm_jinxuan.view.timer.TimerFragment
@@ -35,6 +36,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        AlarmRepository.init(this)
 
         // 默认显示首页
         if (savedInstanceState == null) {

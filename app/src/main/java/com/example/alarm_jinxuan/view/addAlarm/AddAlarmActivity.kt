@@ -1,7 +1,10 @@
 package com.example.alarm_jinxuan.view.addAlarm
 
+import android.Manifest
 import android.app.Dialog
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -9,8 +12,10 @@ import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.alarm_jinxuan.databinding.ActivityAddAlarmBinding
 import com.example.alarm_jinxuan.databinding.LayoutAlarmDurationBinding
@@ -44,6 +49,22 @@ class AddAlarmActivity : AppCompatActivity() {
 
     // 当前的响铃时长
     private var currentRingMinute = 5
+
+    // 待保存的闹钟数据
+    private var pendingAlarm: AlarmEntity? = null
+
+    // 通知权限请求（Android 13+）
+    private val requestNotificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (!isGranted) {
+            // 用户拒绝了权限
+            Toast.makeText(this, "没有通知权限，闹钟可能无法正常提醒", Toast.LENGTH_LONG).show()
+        }
+        pendingAlarm?.let {
+            saveAlarm(it)
+        }
+    }
 
     private val durationData = minutesList.mapIndexed { index, min ->
         DurationOption(
@@ -190,6 +211,7 @@ class AddAlarmActivity : AppCompatActivity() {
         // 再响间隔
         intervalRingValue = alarm.snoozeInterval
         repeatRingValue = alarm.snoozeCount
+        binding.beepIntervalValue.text = "$intervalRingValue 分钟，$repeatRingValue 次"
     }
 
     private fun selectWheel() {
@@ -516,12 +538,16 @@ class AddAlarmActivity : AppCompatActivity() {
             checkedNames.isEmpty() -> "不重复"
             else -> checkedNames.joinToString(", ")
         }
+        // 计算下一次响铃的时间戳
+        val nextTriggerTime = AlarmManagerUtils.calculateNextTriggerTimeByTime(h24,minute, repeatDataString)
         // 整理对象
         val newAlarm = AlarmEntity(
             id = alarmEntity?.id ?: 0,
             period = displayPeriod,
             hour = hour,
             minute = minute,
+            nextTriggerTime = nextTriggerTime, // 先存一个然后进行计算
+
             hour24 = h24,
             isEnabled = true, // 默认为打开状态
 
@@ -538,19 +564,35 @@ class AddAlarmActivity : AppCompatActivity() {
             ringDuration = currentRingMinute,
             snoozeInterval = intervalRingValue,
             snoozeCount = repeatRingValue,
+            computeSnoozeCount = repeatRingValue,
 
             label = "闹钟"
         )
+        // 检查通知权限（Android 13+）
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+                // 没有权限，请求权限
+                pendingAlarm = newAlarm
+                requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                return
+            }
+        }
+
+        saveAlarm(newAlarm)
+    }
+
+    private fun saveAlarm(alarm: AlarmEntity) {
         // 存储到数据库
         lifecycleScope.launch {
-            val rowId = viewModel.insertAlarm(newAlarm)
+            val rowId = viewModel.insertAlarm(alarm)
 
             if (rowId != -1L) {
-                val triggerTime = viewModel.calculateNextTriggerTime(newAlarm)
-                val (d, h, m) = viewModel.getRemainingTime(triggerTime)
+                val triggerTime = AlarmManagerUtils.calculateNextTriggerTime(alarm)
+                val (d, h, m) = AlarmManagerUtils.getRemainingTime(triggerTime)
 
                 // 同时把闹钟交给系统管理器
-                AlarmManagerUtils.setAlarm(this@AddAlarmActivity,newAlarm,triggerTime)
+                AlarmManagerUtils.setAlarm(this@AddAlarmActivity, alarm, triggerTime)
 
                 val time = StringUtils.formatRemainingTime(d, h, m)
                 Toast.makeText(applicationContext, time, Toast.LENGTH_SHORT).show()
@@ -560,7 +602,6 @@ class AddAlarmActivity : AppCompatActivity() {
             } else {
                 Toast.makeText(applicationContext, "保存失败，请重试", Toast.LENGTH_SHORT).show()
             }
-
         }
     }
 

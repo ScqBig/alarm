@@ -25,9 +25,9 @@
             android:text="下午"
             android:textColor="#FFFFFF"
             android:textSize="20sp"
+
             app:layout_constraintBottom_toBottomOf="@+id/tv_time"
-            app:layout_constraintEnd_toStartOf="@+id/tv_time"
-            app:layout_constraintTop_toTopOf="@+id/tv_time" />
+            app:layout_constraintEnd_toStartOf="@+id/tv_time" />
 
         <TextView
             android:id="@+id/tv_time"
@@ -35,8 +35,8 @@
             android:layout_height="wrap_content"
             android:text="2:00"
             android:textColor="#FFFFFF"
-            android:textSize="80sp"
-            android:textStyle="bold"
+            android:textSize="60sp"
+
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -74,16 +74,15 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
         android:background="@drawable/bg_snooze_button"
-        android:paddingStart="30dp"
-        android:paddingTop="12dp"
-        android:paddingEnd="30dp"
-        android:paddingBottom="12dp"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
         android:text="10 分钟后提醒"
         android:textAllCaps="false"
         android:textColor="#FFFFFF"
-        android:textSize="18sp"
+        android:textSize="16sp"
         app:backgroundTint="@null"
         app:elevation="0dp"
+
         app:layout_constraintBottom_toTopOf="@+id/guideline_bottom"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -119,6 +118,7 @@
         android:text="滑动关闭闹钟"
         android:textColor="#FFFFFF"
         android:textSize="16sp"
+
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />

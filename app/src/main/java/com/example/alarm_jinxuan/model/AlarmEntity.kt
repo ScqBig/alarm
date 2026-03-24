@@ -14,12 +14,13 @@ data class AlarmEntity(
     val period: String,          // "上午" "下午" "中午" "晚上"
     val hour: Int,               // 12小时制 (01-12)
     val minute: Int,             // 分钟 (00-59)
+    var nextTriggerTime: Long,   // 下一次响铃的时间戳
 
     val hour24: Int,             // 24小时制的小时 (0-23)，存这个设置闹钟最稳
-    val isEnabled: Boolean = true, // 闹钟开启/关闭状态
+    var isEnabled: Boolean = true, // 闹钟开启/关闭状态
 
-    val repeatText: String,      // "每天" / "只响一次" / "周一, 周五"
-    val repeatData: String,      //  原始数据（如 "1,0,1,0,0,0,0")
+    val repeatText: String,      // "每天" / "不重复" / "周一, 周五"
+    val repeatData: String,      //  原始数据（如 "1,0,1,0,0,0,0") 这里的周日对应calendar.week，其中周日为索引0
 
     val ringtoneName: String,    // 铃声名
     val ringtoneFileName: String,// 铃声文件名（不存储资源ID）
@@ -32,6 +33,7 @@ data class AlarmEntity(
 
     val snoozeInterval: Int,     // 响铃间隔 (分钟)
     val snoozeCount: Int,        // 重复次数
+    var computeSnoozeCount: Int, // 重复次数（用于计算）
 
     val label: String = "闹钟",   // 备注（闹钟名）
     val createTime: Long = System.currentTimeMillis() // 排序用

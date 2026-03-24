@@ -98,7 +98,6 @@ class RingActivity : AppCompatActivity() {
             MediaUtils.stop(this)
         }
 
-        // 💡 关键：滑动关闭交互
         binding.seekbarDismiss.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {}
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
@@ -106,7 +105,11 @@ class RingActivity : AppCompatActivity() {
             override fun onStopTrackingTouch(seekBar: SeekBar?) {
                 // 如果用户松手时，滑块滑到了 80% 以上，就认为是要关闭
                 if (seekBar != null && seekBar.progress > 80) {
+                    // 关闭铃声的同时也要关闭振动
                     MediaUtils.stop(this@RingActivity)
+                    VibrationUtils.stop(this@RingActivity)
+                    // 同时销毁页面
+                    finish()
                 } else {
                     // 否则，滑块自动弹回起点
                     seekBar?.progress = 0

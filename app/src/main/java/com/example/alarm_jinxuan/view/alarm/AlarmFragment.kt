@@ -19,6 +19,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.example.alarm_jinxuan.databinding.FragmentAlarmBinding
 import com.example.alarm_jinxuan.model.AlarmEntity
+import com.example.alarm_jinxuan.utils.AlarmManagerUtils
 import com.example.alarm_jinxuan.utils.SharedClockComponents
 import com.example.alarm_jinxuan.utils.StringUtils
 import com.example.alarm_jinxuan.view.addAlarm.AddAlarmActivity
@@ -112,11 +113,11 @@ class AlarmFragment : Fragment() {
                     startActivity(intent)
                 },
                 onToggle = { alarm, isEnabled ->
-                    viewModel.updateAlarmEnabled(alarm.id, isEnabled)
+                    viewModel.updateAlarmEnabled(alarm, isEnabled)
 
                     if (isEnabled) {
-                        val triggerTime = viewModel.calculateNextTriggerTime(alarm)
-                        val (d, h, m) = viewModel.getRemainingTime(triggerTime)
+                        val triggerTime = AlarmManagerUtils.calculateNextTriggerTime(alarm)
+                        val (d, h, m) = AlarmManagerUtils.getRemainingTime(triggerTime)
                         // 弹窗提示用户
                         val time = StringUtils.formatRemainingTime(d,h,m)
                         showSmartToast(time)

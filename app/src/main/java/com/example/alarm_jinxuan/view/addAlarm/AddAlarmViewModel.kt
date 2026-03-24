@@ -1,10 +1,17 @@
 package com.example.alarm_jinxuan.view.addAlarm
 
 import android.app.Application
+import android.app.NotificationManager
+import android.content.Context
+import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.application
 import androidx.lifecycle.viewModelScope
 import com.example.alarm_jinxuan.dao.AppDatabase
 import com.example.alarm_jinxuan.model.AlarmEntity
+import com.example.alarm_jinxuan.repository.AlarmRepository
+import com.example.alarm_jinxuan.service.AlarmService
+import com.example.alarm_jinxuan.utils.AlarmManagerUtils
 import com.example.alarm_jinxuan.utils.StringUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -50,54 +57,10 @@ class AddAlarmViewModel(application: Application) : AndroidViewModel(application
     val alarmCountdownFlow = combine(allEnabledAlarms, timeTickerFlow) { alarms, _ ->
         val nextAlarmEntity = alarms.firstOrNull() ?: return@combine "所有闹钟已关闭"
 
-        val triggerTime = calculateNextTriggerTime(nextAlarmEntity)
-        val (d,h, m) = getRemainingTime(triggerTime)
+        val triggerTime = nextAlarmEntity.nextTriggerTime
+        val (d,h, m) = AlarmManagerUtils.getRemainingTime(triggerTime)
 
         StringUtils.formatRemainingTime(d,h,m)
-    }
-
-    /**
-     * 闹钟响铃时间
-     */
-    fun calculateNextTriggerTime(alarm: AlarmEntity): Long {
-        val now = Calendar.getInstance()
-
-        val target = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, alarm.hour24)
-            set(Calendar.MINUTE, alarm.minute)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-
-        // 如果已经过了 → 加一天
-        if (target.before(now)) {
-            target.add(Calendar.DAY_OF_YEAR, 1)
-        }
-
-        return target.timeInMillis
-    }
-
-    /**
-     * 和当前时间（now）计算还有多久
-     */
-    fun getRemainingTime(triggerTime: Long): Triple<Int, Int, Int> {
-        val diff = triggerTime - System.currentTimeMillis()
-
-        // 如果时间已经过了，直接返回全 0
-        if (diff <= 0) return Triple(0, 0, 0)
-
-        // 先算出总分钟数
-        val totalMinutes = diff / (1000 * 60)
-
-        // 算出总小时数
-        val totalHours = totalMinutes / 60
-
-        // 级联取余计算
-        val remainMinutes = (totalMinutes % 60).toInt()
-        val remainHours = (totalHours % 24).toInt() // 小时对 24 取余，保证不超过 24
-        val days = (totalHours / 24).toInt()        // 总小时除以 24 得到天数
-
-        return Triple(days, remainHours, remainMinutes)
     }
 
     /**
@@ -112,9 +75,27 @@ class AddAlarmViewModel(application: Application) : AndroidViewModel(application
     /**
      * 修改闹钟的开关状态
      */
-    fun updateAlarmEnabled(alarmId: Int,enabled: Boolean) {
+    fun updateAlarmEnabled(alarm: AlarmEntity,enabled: Boolean) {
+        // 同时也要修改闹钟的重复响应次数以及相应的时间戳
+        val computeSnoozeCount = alarm.snoozeCount
+        val nextTriggerTime = AlarmManagerUtils.calculateNextTriggerTime(alarm)
+
         viewModelScope.launch {
-            alarmDao.updateEnabledStatus(alarmId,enabled)
+            // 关闭闹钟通知
+            val nm = application.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            nm.cancel(alarm.id)
+            // 关闭service服务
+            val intent = Intent(application, AlarmService::class.java)
+            application.stopService(intent)
+
+            alarmDao.updateEnabledStatus(alarm.id,enabled,nextTriggerTime,computeSnoozeCount)
+            // 同时不要忘记去修改闹钟状态
+            if (!enabled) {
+                AlarmManagerUtils.cancelAlarm(application,alarm.id)
+            } else {
+                val triggerTime = AlarmManagerUtils.calculateNextTriggerTime(alarm)
+                AlarmManagerUtils.setAlarm(application,alarm,triggerTime)
+            }
         }
     }
 
